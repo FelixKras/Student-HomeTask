@@ -2,16 +2,19 @@
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
+using System.Diagnostics;
 using System.Drawing;
+using System.Drawing.Imaging;
 using System.Globalization;
 using System.Text;
 using System.Windows.Forms;
 using System.Threading;
 using System.IO;
+using System.Runtime.InteropServices;
 
 namespace SquareCalc
 {
-    public partial class Form1 : Form
+    public partial class frmMain : Form
     {
         Point m_CircleCenter;
         int m_CircleRadius;
@@ -19,11 +22,10 @@ namespace SquareCalc
         const int m_MaxNumOfPoints = 10000;
         Thread m_UpdateThread;
 
-        public Form1()
+        public frmMain()
         {
             InitializeComponent();
             LoadSettingsFile("input.txt");
-
         }
 
 
@@ -54,6 +56,10 @@ namespace SquareCalc
             // This method should count how many points are inside the circle
 
             int InsidePoints = FindIfInside();
+            if (!CreateBitmap(m_Pnts))
+            {
+                throw new Exception("File not created");
+            }
 
             StartUpdateInNewThread(InsidePoints);
         }
@@ -70,23 +76,24 @@ namespace SquareCalc
             Bitmap bmp = new Bitmap(pictureBox1.Width, pictureBox1.Height);
 
             Pen pen = new Pen(Color.Red);
-            Rectangle rect = new Rectangle(m_CircleCenter.X - m_CircleRadius, m_CircleCenter.Y - m_CircleRadius, m_CircleRadius * 2, m_CircleRadius * 2);
+            Rectangle rect = new Rectangle(m_CircleCenter.X - m_CircleRadius, m_CircleCenter.Y - m_CircleRadius,
+                m_CircleRadius * 2, m_CircleRadius * 2);
             using (Graphics grphx = Graphics.FromImage(bmp))
             {
                 grphx.DrawEllipse(pen, rect);
                 pictureBox1.Image = bmp;
             }
-
         }
+
         /// <summary>
         /// Update label with the result
         /// </summary>
         /// <param name="numOfInsidePoints">Muber of points inside the circle</param>
         private void UpdateData(object numOfInsidePoints)
         {
-
-            double dNumOfPoints = (double)((int)numOfInsidePoints);
-            double result = (dNumOfPoints * pictureBox1.Width * pictureBox1.Height) / (m_Pnts.Length * m_CircleRadius * m_CircleRadius);
+            double dNumOfPoints = (double) ((int) numOfInsidePoints);
+            double result = (dNumOfPoints * pictureBox1.Width * pictureBox1.Height) /
+                            (m_Pnts.Length * m_CircleRadius * m_CircleRadius);
             label1.Text = result.ToString(CultureInfo.InvariantCulture);
         }
 
@@ -101,6 +108,7 @@ namespace SquareCalc
 
             return inside;
         }
+
         /// <summary>
         /// Draw all the generated points onto the picturebox
         /// </summary>
@@ -115,8 +123,53 @@ namespace SquareCalc
                     grphx.FillRectangle(brush, pnts[ii].X, pnts[ii].Y, 1, 1);
                 }
             }
-
         }
+
+
+        /// <summary>
+        /// Function that creates a bitmap file of the point distribution
+        /// </summary>
+        /// <param name="pnts">Points</param>
+        /// <returns>success status of creating bitmap file</returns>
+        private bool CreateBitmap(Point[] pnts)
+        {
+            int width = pictureBox1.Width, height = pictureBox1.Height;
+
+            bool bResult = false;
+            Bitmap bmp = new Bitmap(width, height, PixelFormat.Format24bppRgb);
+            Stopwatch sw = Stopwatch.StartNew();
+
+            #region Create bitmapfile here
+
+            try
+            {
+                BitmapData data = bmp.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly,
+                    PixelFormat.Format24bppRgb);
+
+                byte[] byImage = new byte[width*3*height];
+             
+                for (int i = 0; i < pnts.Length; i++)
+                {
+                    int x = pnts[i].X;
+                    int y = pnts[i].Y;
+                    byImage[y*width*3+(3*x-1)] = byte.MaxValue;
+                }
+                Marshal.Copy(byImage, 0, data.Scan0, byImage.Length);
+                
+                bmp.UnlockBits(data);
+                bmp.Save("result.jpg");
+                bResult = true;
+            }
+            catch (Exception e)
+            {
+                bResult = false;
+            }
+
+            #endregion Create bitmapfile here
+
+            return bResult;
+        }
+
 
         /// <summary>
         /// Generates random points in the range of picturebox
@@ -131,6 +184,7 @@ namespace SquareCalc
                 pnts[ii].X = rnd.Next(pictureBox1.Width);
                 pnts[ii].Y = rnd.Next(pictureBox1.Height);
             }
+
             return pnts;
         }
     }
