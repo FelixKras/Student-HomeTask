@@ -133,6 +133,8 @@ namespace SquareCalc
         /// <returns>success status of creating bitmap file</returns>
         private bool CreateBitmap(Point[] pnts)
         {
+            
+            //todo: For bonus points, fix this function to create a correct  image of all the points
             int width = pictureBox1.Width, height = pictureBox1.Height;
 
             bool bResult = false;
@@ -146,13 +148,13 @@ namespace SquareCalc
                 BitmapData data = bmp.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly,
                     PixelFormat.Format24bppRgb);
 
-                byte[] byImage = new byte[width*3*height];
+                byte[] byImage = new byte[width*height];
              
                 for (int i = 0; i < pnts.Length; i++)
                 {
                     int x = pnts[i].X;
                     int y = pnts[i].Y;
-                    byImage[y*width*3+(3*x-1)] = byte.MaxValue;
+                    byImage[y*width+(x)] = byte.MaxValue;
                 }
                 Marshal.Copy(byImage, 0, data.Scan0, byImage.Length);
                 
